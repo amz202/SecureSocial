@@ -1,5 +1,6 @@
 package com.example.securesocial.service
 
+import com.example.securesocial.data.model.LogType
 import com.example.securesocial.data.model.Post
 import com.example.securesocial.data.model.PostLike
 import com.example.securesocial.data.model.PostView
@@ -13,7 +14,8 @@ import org.springframework.stereotype.Service
 class PostInteractionService(
     private val postLikeRepository: PostLikeRepository,
     private val postViewRepository: PostViewRepository,
-    private val cryptoService: CryptoService
+    private val cryptoService: CryptoService,
+    private val activityLogService: ActivityLogService
 ){
     fun likePost(userId: String, postId: String): PostLike {
 
@@ -30,8 +32,10 @@ class PostInteractionService(
             userId = userObjectId,
             signature = digitalSignature
         )
+        val savedLike = postLikeRepository.save(like)
 
-        return postLikeRepository.save(like)
+        activityLogService.log(userId, LogType.LIKE, postId)
+        return savedLike
     }
 
     fun viewPost(userId: String, postId: String) {

@@ -41,8 +41,13 @@ class AuthController(
         return authService.refresh(body.refreshToken)
     }
 
-    @GetMapping("/checkUsername")
-    fun checkUsernameAvailability(username: String) = authService.checkAvailableUsername(username)
+    @GetMapping("/check-username")
+    fun checkUsername(@RequestParam username: String): ResponseEntity<Map<String, Boolean>> {
+        val isAvailable = authService.checkAvailableUsername(username)
+
+        // Returns: { "available": true }
+        return ResponseEntity.ok(mapOf("available" to isAvailable))
+    }
 
     @PostMapping("/verify-otp")
     fun verify(@RequestBody body: OtpRequest): ResponseEntity<String> {

@@ -1,5 +1,6 @@
 package com.example.securesocial.security
 
+import com.example.securesocial.data.model.LogType
 import com.example.securesocial.data.model.RefreshToken
 import com.example.securesocial.data.model.User
 import com.example.securesocial.data.model.VerificationToken
@@ -7,6 +8,7 @@ import com.example.securesocial.data.model.request.OtpRequest
 import com.example.securesocial.data.repositories.RefreshTokenRepository
 import com.example.securesocial.data.repositories.UserRepository
 import com.example.securesocial.data.repositories.VerificationTokenRepository
+import com.example.securesocial.service.ActivityLogService
 import com.example.securesocial.service.EmailService
 import org.bson.types.ObjectId
 import org.springframework.http.HttpStatus
@@ -30,6 +32,7 @@ class AuthService(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val verificationTokenRepository: VerificationTokenRepository,
     private val emailService: EmailService,
+    private val activityLogService: ActivityLogService
 ) {
     data class TokenPair(
         val accessToken: String,
@@ -99,11 +102,18 @@ class AuthService(
         val newRefreshToken = jwtService.generateRefreshToken(user.id.toHexString())
 
         storeRefreshToken(user.id, newRefreshToken)
-
-        return TokenPair(
+        val tokenPair = TokenPair(
             accessToken = newAccessToken,
             refreshToken = newRefreshToken
         )
+
+        activityLogService.log(
+            userId = user.id.toHexString(),
+            action = LogType.LOGIN,
+            details = null
+        )
+
+        return tokenPair
     }
 
     @Transactional //if any of db query fail, we want to rollback the whole transaction

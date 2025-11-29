@@ -1,11 +1,13 @@
 package com.example.securesocial.controllers
 
+import com.example.securesocial.data.model.LogType
 import com.example.securesocial.data.model.Post
 import com.example.securesocial.data.model.PostTag
 import com.example.securesocial.data.model.request.PostRequest
 import com.example.securesocial.data.model.response.PostResponse
 import com.example.securesocial.data.repositories.PostRepository
 import com.example.securesocial.security.JwtService
+import com.example.securesocial.service.ActivityLogService
 import com.example.securesocial.service.PostInteractionService
 import org.bson.types.ObjectId
 import org.springframework.http.ResponseEntity
@@ -18,7 +20,8 @@ import kotlin.toString
 class PostController(
     private val postRepository: PostRepository,
     private val postInteractionService: PostInteractionService,
-    private val jwtService: JwtService
+    private val jwtService: JwtService,
+    private val activityLogService: ActivityLogService
 ) {
 
     // Create a Post
@@ -36,6 +39,7 @@ class PostController(
             tag = selectedTag
         )
         val savedPost = postRepository.save(post)
+        activityLogService.log(userId, LogType.POST, savedPost.id.toHexString())
 
         val response = PostResponse(
             id = savedPost.id.toHexString(),
