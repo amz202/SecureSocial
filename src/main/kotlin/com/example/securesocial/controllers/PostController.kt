@@ -24,13 +24,9 @@ class PostController(
     fun createPost(
         @RequestHeader("Authorization") token: String,
         @RequestBody request: PostRequest
-    ): ResponseEntity<Any> {  //errors return string
+    ): ResponseEntity<Post> {  //errors return string
         val userId = jwtService.getUserIdFromToken(token)
-        val selectedTag = try {
-            PostTag.valueOf(request.tag.uppercase())
-        } catch (e: IllegalArgumentException) {
-            return ResponseEntity.badRequest().body("Invalid tag. Allowed: ${PostTag.values().joinToString()}")
-        }
+        val selectedTag = PostTag.valueOf(request.tag.uppercase())
         val post = Post(
             authorId = ObjectId(userId),
             title = request.title,
@@ -88,12 +84,9 @@ class PostController(
     @GetMapping("/tag/{tagName}")
     fun getPostsByTag(
         @PathVariable tagName: String
-    ): ResponseEntity<Any> {
-        val tag = try {
-            PostTag.valueOf(tagName.uppercase())
-        } catch (e: IllegalArgumentException) {
-            return ResponseEntity.badRequest().body("Invalid tag.")
-        }
+    ): ResponseEntity<List<PostResponse>> {
+
+        val tag = PostTag.valueOf(tagName.uppercase())
 
         val posts = postRepository.findByTag(tag)
 
