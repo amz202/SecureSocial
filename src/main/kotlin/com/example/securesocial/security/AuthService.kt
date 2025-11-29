@@ -2,8 +2,12 @@ package com.example.securesocial.security
 
 import com.example.securesocial.data.model.RefreshToken
 import com.example.securesocial.data.model.User
+import com.example.securesocial.data.model.VerificationToken
+import com.example.securesocial.data.model.request.OtpRequest
 import com.example.securesocial.data.repositories.RefreshTokenRepository
 import com.example.securesocial.data.repositories.UserRepository
+import com.example.securesocial.data.repositories.VerificationTokenRepository
+import com.example.securesocial.service.EmailService
 import org.bson.types.ObjectId
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
@@ -23,24 +27,60 @@ class AuthService(
     private val jwtService: JwtService,
     private val userRepository: UserRepository,
     private val hashEncoder: HashEncoder,
-    private val refreshTokenRepository: RefreshTokenRepository
+    private val refreshTokenRepository: RefreshTokenRepository,
+    private val verificationTokenRepository: VerificationTokenRepository,
+    private val emailService: EmailService,
 ) {
     data class TokenPair(
         val accessToken: String,
         val refreshToken: String
     )
 
-    fun register(username: String, password: String): User {
-        val user = userRepository.findByUsername(username)
-        if(user != null) {
+    fun register(username: String, password: String, email: String): User {
+        val existingUser = userRepository.findByUsername(username)
+        if (existingUser != null) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "A user with that username already exists.")
         }
+
+        //Generate OTP
+        val plainOtp = (100000..999999).random().toString()
+        val hashedOtp = hashEncoder.encode(plainOtp) ?: throw RuntimeException("Encoding error")
+
+        verificationTokenRepository.deleteByEmail(email)
+        val token = VerificationToken(
+            email = email,
+            hashedOtp = hashedOtp
+        )
+        verificationTokenRepository.save(token)
+        emailService.sendVerificationEmail(email, plainOtp)
+
         return userRepository.save(
             User(
                 username = username,
-                hashedPassword = hashEncoder.encode(password)
+                hashedPassword = hashEncoder.encode(password),
+                email = email
             )
         )
+    }
+
+    fun verify(request: OtpRequest): String {
+        val token = verificationTokenRepository.findByEmail(request.email)
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP expired or invalid")
+
+        //compare
+        if (!hashEncoder.matches(request.otp, token.hashedOtp)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OTP")
+        }
+
+        val user = userRepository.findByEmail(request.email)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+
+        user.isVerified = true
+        userRepository.save(user)
+
+        verificationTokenRepository.deleteByEmail(request.email)
+
+        return "Verified! Login enabled."
     }
 
     fun checkAvailableUsername(username: String): Boolean {

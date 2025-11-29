@@ -1,6 +1,6 @@
 package com.example.securesocial.controllers
 
-import com.example.securesocial.data.model.request.AuthRequest
+import com.example.securesocial.data.model.request.RegisterRequest
 import com.example.securesocial.data.model.request.RefreshRequest
 import com.example.securesocial.security.AuthService
 import jakarta.validation.Valid
@@ -18,14 +18,14 @@ class AuthController(
 
     @PostMapping("/register")
     fun register(
-        @Valid @RequestBody body: AuthRequest
+        @Valid @RequestBody body: RegisterRequest
     ) {
-        authService.register(body.username, body.password)
+        authService.register(body.username, body.password, body.email)
     }
 
     @PostMapping("/login")
     fun login(
-        @RequestBody body: AuthRequest
+        @RequestBody body: RegisterRequest
     ): AuthService.TokenPair {
         return authService.login(body.username, body.password)
     }
