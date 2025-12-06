@@ -102,11 +102,12 @@ class PostController(
 
     @GetMapping("/tag/{tagName}")
     fun getPostsByTag(
+        @RequestHeader("Authorization") token: String,
         @PathVariable tagName: String
     ): ResponseEntity<List<PostResponse>> {
 
         val tag = PostTag.valueOf(tagName.uppercase())
-
+        val userId = jwtService.getUserIdFromToken(token)
         val posts = postRepository.findByTag(tag)
 
         val response = posts?.map { post ->
@@ -133,5 +134,28 @@ class PostController(
         val userId = jwtService.getUserIdFromToken(token)
         val like = postInteractionService.likePost(userId, postId)
         return ResponseEntity.ok(like)
+    }
+
+    @GetMapping("/myPosts")
+    fun getMyPosts(
+        @RequestHeader("Authorization") token: String
+    ): ResponseEntity<List<PostResponse>> {
+        val userId = jwtService.getUserIdFromToken(token)
+        val posts = postRepository.findByAuthorId(ObjectId(userId))
+
+        val response = posts?.map { post ->
+            PostResponse(
+                id = post.id.toHexString(),
+                title = post.title,
+                content = post.content,
+                tag = post.tag.name,
+                createdAt = post.createdAt,
+                authorId = post.authorId.toHexString(),
+                likeCount = postInteractionService.getLikeCount(post.id.toHexString()),
+                viewCount = postInteractionService.getViewCount(post.id.toHexString())
+            )
+        }
+
+        return ResponseEntity.ok(response)
     }
 }
